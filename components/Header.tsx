@@ -71,9 +71,10 @@ function WalletSelector(): ReactElement {
 					<span>
 						<IconWallet className={'yearn--header-nav-item mt-0.5 block h-4 w-4 md:hidden'} />
 						<span
-							className={
-								'relative hidden h-8 cursor-pointer items-center justify-center rounded border border-transparent bg-neutral-900 px-2 text-xs font-normal text-neutral-0 transition-all hover:bg-neutral-800 md:flex'
-							}>
+							className={`relative hidden h-8 cursor-pointer items-center justify-center
+								border border-transparent bg-neutral-200 
+								px-2 text-xs font-normal text-neutral-900 transition-all 
+								hover:bg-neutral-200 md:flex`}>
 							{'Connect wallet'}
 						</span>
 					</span>
@@ -84,9 +85,8 @@ function WalletSelector(): ReactElement {
 }
 
 const nav: TMenu[] = [
-	{path: '/', label: 'Farming'},
-	{path: '/airdrop', label: 'Prisma Airdrop'},
-	{path: '/about', label: 'About'}
+	{path: '/', label: 'Allowance'},
+	{path: 'https://github.com/yearn/yDiscount', label: 'GitHub', target: '_blank'}
 ]
 
 function AppHeader(): ReactElement {
@@ -96,9 +96,9 @@ function AppHeader(): ReactElement {
 	return (
 		<div
 			id={'head'}
-			className={'fixed inset-x-0 top-0 z-50 w-full bg-neutral-0/95'}>
-			<div className={'mx-auto max-w-5xl'}>
-				<header className={'yearn--header'}>
+			className={'fixed inset-x-0 top-0 z-50 w-full'}>
+			<div className={'mx-auto max-w-6xl'}>
+				<header className={'yearn--header bg-neutral-900/90'}>
 					<Navbar
 						currentPathName={pathname || ''}
 						nav={nav}

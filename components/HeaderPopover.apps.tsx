@@ -1,6 +1,5 @@
-import { YCRV_TOKEN_ADDRESS } from '@yearn-finance/web-lib/utils/constants'
 import { ImageWithFallback } from './ImageWithFallback'
-import { YPRISMA_ADDRESS } from '@/utils/constants'
+import { YCRV_ADDRESS, YETH_ADDRESS, YPRISMA_ADDRESS } from '@/utils/constants'
 import { LogoYearn } from './icons/LogoYearn'
 
 export const APPS = {
@@ -24,7 +23,7 @@ export const APPS = {
 				className={'h-8 w-8'}
 				width={64}
 				height={64}
-				src={`${process.env.SMOL_ASSETS_URL}/token/1/${YCRV_TOKEN_ADDRESS}/logo-128.png`}
+				src={`${process.env.SMOL_ASSETS_URL}/token/1/${YCRV_ADDRESS}/logo-128.png`}
 				loading={'eager'}
 				priority
 			/>
@@ -47,8 +46,8 @@ export const APPS = {
 		icon: (
 			<LogoYearn
 				className={'h-8 w-8'}
-				back={'text-neutral-900'}
-				front={'text-neutral-0'}
+				back={'text-neutral-0'}
+				front={'text-neutral-900'}
 			/>
 		)
 	},
@@ -61,7 +60,7 @@ export const APPS = {
 				className={'h-8 w-8'}
 				width={64}
 				height={64}
-				src={`${process.env.SMOL_ASSETS_URL}/token/1/0x1BED97CBC3c24A4fb5C069C6E311a967386131f7/logo-128.png`}
+				src={`${process.env.SMOL_ASSETS_URL}/token/1/${YETH_ADDRESS}/logo-128.png`}
 				loading={'eager'}
 				priority
 			/>
