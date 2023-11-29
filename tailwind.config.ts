@@ -1,4 +1,5 @@
 import { join } from 'path'
+import defaultTheme from 'tailwindcss/defaultTheme'
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
@@ -16,6 +17,10 @@ const config: Config = {
 	],
   theme: {
     extend: {
+			fontFamily: {
+				aeonik: ['var(--font-aeonik)', 'Aeonik', ...defaultTheme.fontFamily.sans],
+				mono: ['Aeonik Mono', ...defaultTheme.fontFamily.mono]
+			},
 			width: {
 				inherit: 'inherit'
 			},

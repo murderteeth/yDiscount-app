@@ -89,7 +89,7 @@ const nav: TMenu[] = [
 	{path: 'https://github.com/yearn/yDiscount', label: 'GitHub', target: '_blank'}
 ]
 
-function AppHeader(): ReactElement {
+function Header(): ReactElement {
 	const {pathname} = useRouter()
 	const [isMenuOpen, set_isMenuOpen] = useState<boolean>(false)
 
@@ -171,4 +171,4 @@ function AppHeader(): ReactElement {
 	)
 }
 
-export default AppHeader
+export default Header

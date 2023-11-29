@@ -1,15 +1,49 @@
 import '../style.css'
 import type { AppProps } from 'next/app'
+import localFont from 'next/font/local'
 import { WithYearn } from '@yearn-finance/web-lib/contexts/WithYearn'
 import { localhost, mainnet } from '@wagmi/chains'
-import AppHeader from '@/components/Header'
+import Header from 'components/Header'
+import Meta from 'components/Meta'
+
+const aeonik = localFont({
+	variable: '--font-aeonik',
+	display: 'swap',
+	src: [
+		{
+			path: '../public/fonts/Aeonik-Regular.woff2',
+			weight: '400',
+			style: 'normal'
+		},
+		{
+			path: '../public/fonts/Aeonik-Bold.woff2',
+			weight: '700',
+			style: 'normal'
+		},
+		{
+			path: '../public/fonts/Aeonik-Black.ttf',
+			weight: '900',
+			style: 'normal'
+		}
+	]
+});
 
 export default function App({ Component, pageProps }: AppProps) {
-  return <WithYearn
-    supportedChains={[mainnet, localhost]}>
-    <>
-      <AppHeader />
-      <Component {...pageProps} />
-    </>
-  </WithYearn>
+  return <>
+    <style
+      jsx
+      global>{`
+      html {
+        font-family: ${aeonik.style.fontFamily};
+      }
+    `}</style>
+    <WithYearn
+      supportedChains={[mainnet, localhost]}>
+      <>
+        <Meta />
+        <Header />
+        <Component {...pageProps} />
+      </>
+    </WithYearn>
+  </>
 }

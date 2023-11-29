@@ -1,13 +1,9 @@
-import { JetBrains_Mono } from 'next/font/google'
-
-const font = JetBrains_Mono({ subsets: ['latin'] })
 
 export default function Home() {
   return <main className={`
     relative max-w-6xl min-h-screen
     mx-auto mt-20 sm:mt-0 sm:p-24 sm:pb-40
-    flex flex-col sm:flex-row items-center gap-12
-    ${font.className}`}>
+    flex flex-col sm:flex-row items-center gap-12`}>
 
     <div className="sm:w-2/3">
       <h1 className="my-6 sm:my-8 text-3xl md:text-5xl font-black">yDiscount</h1>
@@ -26,7 +22,7 @@ meatloaf chicken pig spare ribs sirloin.</p>
       <div className={`w-fit p-12
         flex flex-col items-center justify-center
         border border-orange-900/40`}>
-        <div className="my-6 text-3xl md:text-8xl font-black">99%</div>
+        <div className="my-6 text-3xl md:text-8xl font-mono font-black">99%</div>
         <p className="text-sm">Most important stat about yDiscount (ie northstar metric)</p>
       </div>
     </div>

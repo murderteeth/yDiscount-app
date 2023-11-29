@@ -13,6 +13,7 @@
     "@wagmi/core": "^1.4.7",
     "@yearn-finance/web-lib": "^3.0.58",
     "next": "13.5.4",
+    "next-seo": "^6.4.0",
     "react": "^18",
     "react-dom": "^18",
     "viem": "^1.19.9",

@@ -1,5 +1,5 @@
 import { ImageWithFallback } from './ImageWithFallback'
-import { YCRV_ADDRESS, YETH_ADDRESS, YPRISMA_ADDRESS } from '@/utils/constants'
+import { YCRV_ADDRESS, YETH_ADDRESS, YPRISMA_ADDRESS } from 'utils/constants'
 import { LogoYearn } from './icons/LogoYearn'
 
 export const APPS = {
