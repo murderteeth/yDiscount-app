@@ -68,7 +68,7 @@ export const APPS = {
 	},
 	yPrisma: {
 		name: 'yPrisma',
-		href: '/',
+		href: 'https://yprisma.yearn.fi/',
 		icon: (
 			<ImageWithFallback
 				priority

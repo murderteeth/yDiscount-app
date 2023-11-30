@@ -1,8 +1,10 @@
 # yDiscount
-Buy YFI at a discount
+YFI discounts for contributors 👷‍♂️
 
-## Get Started
+## based on
+[https://github.com/Majorfi/yPrisma](https://github.com/Majorfi/yPrisma)
 
+## get started
 ```bash
 bun install
 bun dev

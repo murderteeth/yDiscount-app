@@ -72,9 +72,8 @@ function WalletSelector(): ReactElement {
 						<IconWallet className={'yearn--header-nav-item mt-0.5 block h-4 w-4 md:hidden'} />
 						<span
 							className={`relative hidden h-8 cursor-pointer items-center justify-center
-								border border-transparent bg-neutral-200 
-								px-2 text-xs font-normal text-neutral-900 transition-all 
-								hover:bg-neutral-200 md:flex`}>
+								border border-transparent bg-neutral-0 
+								px-2 text-xs font-normal text-neutral-900 transition-all md:flex`}>
 							{'Connect wallet'}
 						</span>
 					</span>
@@ -85,7 +84,6 @@ function WalletSelector(): ReactElement {
 }
 
 const nav: TMenu[] = [
-	{path: '/', label: 'Allowance'},
 	{path: 'https://github.com/yearn/yDiscount', label: 'GitHub', target: '_blank'}
 ]
 

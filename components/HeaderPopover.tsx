@@ -4,6 +4,8 @@ import { Popover, Transition } from '@headlessui/react'
 import { APPS } from './HeaderPopover.apps'
 import type { ReactElement } from 'react'
 import { LogoYearn } from './icons/LogoYearn'
+import { DYFI_ADDRESS } from 'utils/constants'
+import { ImageWithFallback } from './ImageWithFallback'
 
 function LogoPopover(): ReactElement {
 	const [isShowing, set_isShowing] = useState(false)
@@ -16,11 +18,14 @@ function LogoPopover(): ReactElement {
 			<Popover.Button className={'flex items-center'}>
 				<Link href={'/'}>
 					<span className={'sr-only'}>{'Back to home'}</span>
-					<LogoYearn
+					<ImageWithFallback
+						alt={'yETH'}
 						className={'h-8 w-8'}
-						back={'text-orange-600'}
-						front={'text-white'}
-					/>
+						width={64}
+						height={64}
+						src={`${process.env.SMOL_ASSETS_URL}/token/1/${DYFI_ADDRESS}/logo-128.png`}
+						loading={'eager'}
+						priority />
 				</Link>
 			</Popover.Button>
 			<Transition
@@ -34,7 +39,7 @@ function LogoPopover(): ReactElement {
 				leaveTo={'opacity-0 translate-y-1'}>
 				<Popover.Panel
 					className={'absolute left-1/2 z-10 mt-0 w-80 -translate-x-1/2 px-4 pt-4 sm:px-0 md:w-96'}>
-					<div className={'overflow-hidden border border-orange-900/40 shadow-lg'}>
+					<div className={'overflow-hidden border border-purple-200/40 shadow-lg'}>
 						<div className={'relative grid grid-cols-2 bg-neutral-900 md:grid-cols-3'}>
 							{Object.values(APPS).map(({name, href, icon}): ReactElement => {
 								return (
@@ -46,7 +51,7 @@ function LogoPopover(): ReactElement {
 										<div
 											onClick={(): void => set_isShowing(false)}
 											className={
-												'flex cursor-pointer flex-col items-center p-4 transition-colors hover:bg-orange-900/40'
+												'flex cursor-pointer flex-col items-center p-4 transition-colors hover:bg-purple-200/40'
 											}>
 											<div>{cloneElement(icon)}</div>
 											<div className={'pt-2 text-center'}>
