@@ -3,9 +3,8 @@ import Link from 'next/link'
 import { Popover, Transition } from '@headlessui/react'
 import { APPS } from './HeaderPopover.apps'
 import type { ReactElement } from 'react'
-import { LogoYearn } from './icons/LogoYearn'
-import { DYFI_ADDRESS } from 'utils/constants'
 import { ImageWithFallback } from './ImageWithFallback'
+import { DYFI_ADDRESS } from 'utils/constants'
 
 function LogoPopover(): ReactElement {
 	const [isShowing, set_isShowing] = useState(false)

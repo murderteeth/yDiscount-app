@@ -5,7 +5,12 @@ YFI discounts for contributors 👷‍♂️
 [https://github.com/Majorfi/yPrisma](https://github.com/Majorfi/yPrisma)
 
 ## get started
-```bash
+```sh
 bun install
 bun dev
+```
+
+# production
+```sh
+bun run build
 ```
