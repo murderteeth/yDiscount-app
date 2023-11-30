@@ -3,7 +3,6 @@ import AddressInput, { TInputAddressLike, defaultInputAddressLike } from './Addr
 import { handleInputChangeEventValue } from '@yearn-finance/web-lib/utils/handlers/handleInputChangeEventValue'
 import { AmountInput } from './AmountInput'
 import { TNormalizedBN, toNormalizedBN } from '@yearn-finance/web-lib/utils/format.bigNumber'
-import { zeroAddress } from 'viem'
 
 type TeamMember = { address: TInputAddressLike, allowance: TNormalizedBN }
 
@@ -68,7 +67,7 @@ export default function SetTeamAllowances() {
       <h1 className="my-6 sm:my-8">Contributor Allowances</h1>
       <div className="flex flex-col gap-4">
 
-        {team.map((member, index) => <MemberRow member={member} 
+        {team.map((member, index) => <MemberRow key={index} member={member} 
           onAddressChange={(value) => {
             updateAddress(index, value)
           }} 
