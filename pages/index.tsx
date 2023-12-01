@@ -14,7 +14,6 @@ export default function Home() {
       ? <SetTeamAllowances />
       : <BuyYFI />
     : <Lander />
-
   }, [isActive, isTeamWallet])
 
   return <main className={`
