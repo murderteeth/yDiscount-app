@@ -1,7 +1,7 @@
-import { getAddress, zeroAddress } from 'viem'
+import { getAddress } from 'viem'
 
 export const DEFAULT_CHAIN_ID = 1
-export const DISCOUNT_ADDRESS = getAddress(zeroAddress)
+export const DISCOUNT_ADDRESS = getAddress('0x274b028b03A250cA03644E6c578D81f019eE1323')
 export const LENS_ADDRESS = getAddress('0x83d95e0D5f402511dB06817Aff3f9eA88224B030')
 export const YFI_ADDRESS = getAddress('0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e')
 export const DYFI_ADDRESS = getAddress('0x41252E8691e964f7DE35156B68493bAb6797a275')
