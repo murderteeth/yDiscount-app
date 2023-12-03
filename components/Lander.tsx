@@ -16,11 +16,10 @@ andouille prosciutto meatball. Doner beef short ribs buffalo. Ham hock
 landjaeger picanha frankfurter, fatback beef burgdoggen kielbasa bresaola 
 meatloaf chicken pig spare ribs sirloin.</p>
 
-        {isActive && <p className="my-2 text-yellow-200">
-          Expecting to see a way to buy discount YFI or set allowances? 
-          If your wallet is connected and you're seeing this screen,
-          it means you currently have no yDiscount allowance for this month.
-        </p>}
+        {isActive && <div className="my-2 flex flex-col gap-4 text-yellow-200">
+            <p>Expecting to see a way to buy discount YFI or set allowances?</p>
+            <p>If your wallet is connected and you're seeing this screen, it means <span className="font-bold">you currently have no yDiscount allowance for this month</span>.</p>
+          </div>}
       </div>
     </div>
 
