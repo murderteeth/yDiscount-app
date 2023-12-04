@@ -10,6 +10,7 @@ import { useContractRead, useContractWrite, usePrepareContractWrite } from 'wagm
 import { DISCOUNT_ADDRESS } from 'utils/constants'
 import { parseAbi } from 'viem'
 import Numeric from './fields/Numeric'
+import Tokens from './fields/Tokens'
 
 type Contributor = { address: TInputAddressLike, allowance: TNormalizedBN }
 
@@ -59,7 +60,9 @@ function ContributorRow({
       <div>+</div>
       <div>{formatAmount(contributor.allowance.normalized, 3, 3)}</div>
       <div>=</div>
-      <div className="font-bold">{formatAmount(total, 3, 3)}</div>
+      <div className="font-bold">
+        <Tokens value={total} symbol="ETH" decimals={3} loading={false} />
+      </div>
     </div>
   </>
 }
@@ -149,7 +152,7 @@ export default function SetTeamAllowances() {
           </div>
           <div>/</div>
           <div className="font-black text-purple-100">
-            <Numeric value={signals.value.teamAllowance.normalized || 0} decimals={3} loading={isFetching} />
+            <Tokens value={signals.value.teamAllowance.normalized || 0} symbol="ETH" decimals={3} loading={isFetching} />
           </div>
         </div>
       </div>

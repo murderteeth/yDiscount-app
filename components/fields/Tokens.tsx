@@ -8,11 +8,11 @@ export default function Tokens({
   value: number | string | undefined, decimals: number, symbol: string, loading?: boolean 
 }) {
   const formatted = useMemo(() => {
-    if(!value) return 'NA'
+    if(value === undefined) return 'NA'
     return formatAmount(value, decimals, decimals)
   }, [value, decimals])
 
   return <Renderable fallback={'*'.repeat(formatted.length)} shouldRender={!loading}>
-    <span className="font-mono">{formatted} {symbol}</span>
+    <span className="font-mono whitespace-nowrap">{formatted} {symbol}</span>
   </Renderable>
 }
