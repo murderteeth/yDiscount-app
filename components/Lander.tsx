@@ -13,8 +13,8 @@ export default function Lander() {
         <p>Woof. Apples ducks straw, quail a ostriches donkey, hay hook cucumbers. veterinarian blue berries cattle jelly canning. Augers oats hen cowpies. Prairie dogs raccoons robins rats. Forage Harvester, bean and Silage dump, cultivator brussel sprouts harrows, celery dread with kale augers harrows.</p>
 
         {isActive && <div className="my-2 flex flex-col gap-4 text-yellow-200">
-            <p>Expecting to see a way to buy discount YFI or set allowances?</p>
-            <p>If your wallet is connected and you are seeing this screen, it means <span className="font-bold">you currently have no yDiscount allowance for this month</span>.</p>
+          <p>Expecting to see a way to buy discount YFI or set allowances?</p>
+          <p>If your wallet is connected and you are seeing this screen, it means <span className="font-bold">you currently have no yDiscount allowance for this month</span>.</p>
         </div>}
       </div>
     </div>

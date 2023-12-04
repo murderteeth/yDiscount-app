@@ -107,7 +107,7 @@ function usePreview({
   return { preview: data, isFetchingPreview: isFetching }
 }
 
-export default function BuyYFI() {
+export default function BuyVeYFI() {
   const [buy, setBuy] = useState({ 
     amount: toNormalizedBN(0), 
     slippage: toNormalizedBN(50)

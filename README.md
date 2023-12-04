@@ -1,5 +1,5 @@
 # yDiscount
-YFI discounts for contributors 👷‍♂️
+Locked YFI discounts for contributors 👷‍♂️
 
 ## based on
 [https://github.com/Majorfi/yPrisma](https://github.com/Majorfi/yPrisma)
