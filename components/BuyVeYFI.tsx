@@ -16,6 +16,7 @@ import { Button } from '@yearn-finance/web-lib/components/Button'
 import Accordian from './Accordian'
 import AddressInput, { TInputAddressLike } from './fields/AddressInput'
 import { formatAmount } from '@yearn-finance/web-lib/utils/format.number'
+import { useBlock } from 'hooks/useBlock'
 
 function Row({ label, disabled, className, children }: { label: string, disabled?: boolean, className?: string, children: React.ReactNode }) {
   return <div className={`
@@ -48,11 +49,6 @@ function useOnchainData({ address }: { address?: `0x${string}` }) {
       address: DISCOUNT_ADDRESS,
       functionName: 'spot_price',
       abi: parseAbi(['function spot_price() external view returns (uint256)'])
-    }, {
-      address: DISCOUNT_ADDRESS,
-      functionName: 'min_lock',
-      args: [address as `0x${string}`, true],
-      abi: parseAbi(['function min_lock(address, bool) external view returns (bool)'])
     }],
     select: data => {
       const result = {
@@ -61,8 +57,7 @@ function useOnchainData({ address }: { address?: `0x${string}` }) {
           expiration: 0
         },
         discount: toNormalizedBN(0),
-        price: toNormalizedBN(0),
-        minLock: false
+        price: toNormalizedBN(0)
       }
 
       if(data[0].status === 'success') {
@@ -80,10 +75,6 @@ function useOnchainData({ address }: { address?: `0x${string}` }) {
         result.price = toNormalizedBN(data[2].result)
       }
 
-      if(data[3].status === 'success') {
-        result.minLock = data[3].result
-      }
-
       return result
     }
   })
@@ -92,12 +83,12 @@ function useOnchainData({ address }: { address?: `0x${string}` }) {
 }
 
 function usePreview({ 
-  address, amount, delegate, minLock 
+  address, amount, delegate, allowance, minLock
 }: { 
-  address?: `0x${string}`, amount: TNormalizedBN, delegate: boolean, minLock?: boolean 
+  address?: `0x${string}`, amount: TNormalizedBN, delegate: boolean, allowance: TNormalizedBN, minLock?: boolean 
 }) {
   const { data, isFetching } = useContractRead({
-    enabled: !!address && minLock,
+    enabled: !!address && allowance.raw > 0n && minLock,
     address: DISCOUNT_ADDRESS,
     functionName: 'preview',
     args: [address as `0x${string}`, amount.raw, delegate],
@@ -128,17 +119,42 @@ export default function BuyVeYFI() {
 
   const { refetch, isFetching } = useSignals()
   const { data: onchain, refetch: refetchOnchain, isFetching: isFetchingOnchain } = useOnchainData({ address })
-  const preview = usePreview({ 
-    address, 
-    amount: buy.amount,
-    delegate: delegate.isValid === true, 
-    minLock: onchain?.minLock
-  })
+
+  const { block } = useBlock()
+  const minLock = useMemo(() => {
+    if(!(block && onchain)) return false
+
+    const WEEK = 7 * 24 * 60 * 60 * 1000
+    const MIN_LOCK_WEEKS = 4
+    const DELEGATE_MIN_LOCK_WEEKS = 104
+    const CAP_DISCOUNT_WEEKS = 208
+
+    const timestamp = Number(block.timestamp) * 1000
+    const weeks = Math.min(
+      Math.floor(onchain?.veYFI.expiration / WEEK)
+      - Math.floor(timestamp / WEEK),
+      CAP_DISCOUNT_WEEKS
+    )
+
+    if(delegate.isValid) {
+      return weeks >= DELEGATE_MIN_LOCK_WEEKS
+    } else {
+      return weeks >= MIN_LOCK_WEEKS
+    }
+  }, [block, onchain, delegate])
 
   const allowanceYfi = useMemo(() => {
     if(!onchain || onchain.price.raw === 0n) return toNormalizedBN(0)
     return toNormalizedBN(10n**18n * signals.value.contributorAllowance.raw / onchain.price.raw)
   }, [signals.value, onchain]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const preview = usePreview({ 
+    address, 
+    amount: buy.amount,
+    allowance: allowanceYfi,
+    delegate: delegate.isValid === true, 
+    minLock
+  })
 
   const toETH = useCallback((yfi: TNormalizedBN) => {
     if(!onchain) return toNormalizedBN(0)
@@ -149,11 +165,11 @@ export default function BuyVeYFI() {
     const amountBn = handleInputChangeEventValue(amount, 18)
     if(allowanceYfi.raw < amountBn.raw) return
     setBuy(current => ({ ...current, amount: amountBn }))
-  }, [signals.value, setBuy]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [signals.value, setBuy, allowanceYfi]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onMaxClick = useCallback(() => {
     setBuy(current => ({ ...current, amount: allowanceYfi }))
-  }, [signals.value, setBuy]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [signals.value, setBuy, allowanceYfi]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onSlippageChange = useCallback((amount: TNormalizedBN) => {
     setBuy(current => ({ ...current, slippage: amount }))
@@ -175,8 +191,8 @@ export default function BuyVeYFI() {
     return `Buy ${amount} veYFI for ${price} ETH`
   }, [buy, preview])
 
-  const { config } = usePrepareContractWrite({
-    enabled: !!address && minAmount.raw > 0n,
+  const { config, isError: isBuyError } = usePrepareContractWrite({
+    enabled: !!address && allowanceYfi.raw >= 0n && minAmount.raw > 0n,
     address: DISCOUNT_ADDRESS,
     functionName: 'buy',
     args: [minAmount.raw, address as `0x${string}`],
@@ -194,7 +210,8 @@ export default function BuyVeYFI() {
     if(!isWritten) return
     refetch()
     refetchOnchain()
-  }, [isWritten, refetch, refetchOnchain])
+    setBuy(current => ({ ...current, amount: toNormalizedBN(0) }))
+  }, [isWritten, refetch, refetchOnchain, setBuy])
 
   return <div className="w-full flex flex-col items-start gap-8">
     <div className={`w-full pb-2
@@ -220,42 +237,42 @@ export default function BuyVeYFI() {
     </div>
 
     <div className="w-full sm:w-3/4 sm:mx-auto flex flex-col gap-4">
-      <Row label="veYFI" disabled={!onchain?.minLock}>
+      <Row label="veYFI" disabled={!minLock}>
         <Numeric value={onchain?.veYFI.locked.normalized || 0} decimals={3} loading={isFetchingOnchain} />
       </Row>
-      <Row label="Expiration" className={`${!onchain?.minLock ? 'text-pink-400' : ''}`}>
+      <Row label="Expiration" className={`${!minLock ? 'text-pink-400' : ''}`}>
         <Text value={new Date(onchain?.veYFI.expiration || 0).toDateString()} loading={isFetchingOnchain} />
-        {!onchain?.minLock && <p className='absolute sm:right-0 text-sm text-neutral-100'>
+        {!minLock && <p className='absolute sm:right-0 text-sm text-neutral-100'>
           Expiration doesn`&apos;`t meet the {delegate.isValid ? '2 year' : '4 week'} minimum lockup =(
         </p>}
       </Row>
-      <Row label="YFI spot price" disabled={!onchain?.minLock}>
+      <Row label="YFI spot price" disabled={!minLock}>
         <Tokens value={onchain?.price.normalized} symbol={'ETH'} decimals={3} loading={isFetchingOnchain} />
       </Row>
-      <Row label="Discount" className="text-lg font-bold" disabled={!onchain?.minLock}>
+      <Row label="Discount" className="text-lg font-bold" disabled={!minLock}>
         <Percent value={onchain?.discount.normalized || 0} decimals={2} loading={isFetchingOnchain} />
       </Row>
-      <Row label="Buy veYFI" className="text-lg font-bold" disabled={!onchain?.minLock}>
+      <Row label="Buy veYFI" className="text-lg font-bold" disabled={!minLock}>
         <AmountInput
           amount={buy.amount}
-          disabled={!onchain?.minLock}
+          disabled={!minLock}
           maxAmount={allowanceYfi}
           onAmountChange={onAmountChange}
           onMaxClick={onMaxClick} />
       </Row>
-      <Row label="Max slippage" disabled={!onchain?.minLock}>
+      <Row label="Max slippage" disabled={!minLock}>
         <PercentInput
           amount={buy.slippage} 
-          disabled={!onchain?.minLock}
+          disabled={!minLock}
           onAmountChange={onSlippageChange} />
       </Row>
-      <Row label="Cost" className="text-lg" disabled={!onchain?.minLock}>
+      <Row label="Cost" className="text-lg" disabled={!minLock}>
         <Tokens value={preview.preview?.normalized} symbol={'ETH'} decimals={3} loading={preview.isFetchingPreview} />
       </Row>
-      <Row label="You get at least" className="text-sm" disabled={!onchain?.minLock}>
+      <Row label="You get at least" className="text-sm" disabled={!minLock}>
         <Tokens value={minAmount.normalized} symbol={'veYFI'} decimals={3} />
       </Row>
-      <Row label="You save" className={`text-sm ${!onchain?.minLock ? '' : 'text-orange-100'}`} disabled={!onchain?.minLock}>
+      <Row label="You save" className={`text-sm ${minLock && !minLock || savings.raw > 0n ? 'text-orange-100' : ''}`} disabled={!minLock || savings.raw === 0n}>
         <Tokens value={savings.normalized} symbol={'ETH'} decimals={3} />
       </Row>
 
@@ -263,7 +280,7 @@ export default function BuyVeYFI() {
         <Button
           onClick={onBuy}
           isBusy={isWriting}
-          isDisabled={!onchain?.minLock || buy.amount.raw === 0n}
+          isDisabled={!minLock || buy.amount.raw === 0n || isBuyError}
           className={'w-fit border-none'}>
           {cta}
         </Button>
