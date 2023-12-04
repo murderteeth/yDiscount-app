@@ -5,6 +5,7 @@ import { WithYearn } from '@yearn-finance/web-lib/contexts/WithYearn'
 import { localhost, mainnet } from '@wagmi/chains'
 import Header from 'components/Header'
 import Meta from 'components/Meta'
+import SignalsProvider from 'hooks/useSignals'
 
 const aeonik = localFont({
 	variable: '--font-aeonik',
@@ -42,7 +43,9 @@ export default function App({ Component, pageProps }: AppProps) {
       <>
         <Meta />
         <Header />
-        <Component {...pageProps} />
+				<SignalsProvider>
+	        <Component {...pageProps} />
+				</SignalsProvider>
       </>
     </WithYearn>
   </>

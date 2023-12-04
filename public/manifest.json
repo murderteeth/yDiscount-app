@@ -1,7 +1,7 @@
 {
 	"name": "yDiscount",
 	"short_name": "yDiscount",
-	"description": "Buy YFI at a discount.",
+	"description": "Locked YFI discounts for contributors 👷‍♂️",
 	"locale": "en-US",
 	"uri": "https://ydiscount.yearn.fi/",
 	"og": "https://ydiscount.yearn.fi/og.png",
