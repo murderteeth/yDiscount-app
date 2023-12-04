@@ -8,18 +8,14 @@ export default function Lander() {
     <div className="sm:w-2/3">
       <h1 className="my-6 sm:my-8 text-3xl md:text-5xl font-black">yDiscount</h1>
       <div className="pl-4 py-2 border-l border-l-4 border-purple-200/40 flex flex-col gap-2">
-        <h2 className="text-h2">YFI discounts for contributors 👷‍♂️</h2>
+        <h2 className="text-h2">Locked YFI discounts for contributors 👷‍♂️</h2>
 
-        <p>Bacon ipsum dolor amet biltong ham hock hamburger short loin. Kielbasa 
-buffalo alcatra burgdoggen chuck hamburger. Biltong jerky beef 
-andouille prosciutto meatball. Doner beef short ribs buffalo. Ham hock 
-landjaeger picanha frankfurter, fatback beef burgdoggen kielbasa bresaola 
-meatloaf chicken pig spare ribs sirloin.</p>
+        <p>Woof. Apples ducks straw, quail a ostriches donkey, hay hook cucumbers. veterinarian blue berries cattle jelly canning. Augers oats hen cowpies. Prairie dogs raccoons robins rats. Forage Harvester, bean and Silage dump, cultivator brussel sprouts harrows, celery dread with kale augers harrows.</p>
 
         {isActive && <div className="my-2 flex flex-col gap-4 text-yellow-200">
             <p>Expecting to see a way to buy discount YFI or set allowances?</p>
-            <p>If your wallet is connected and you're seeing this screen, it means <span className="font-bold">you currently have no yDiscount allowance for this month</span>.</p>
-          </div>}
+            <p>If your wallet is connected and you are seeing this screen, it means <span className="font-bold">you currently have no yDiscount allowance for this month</span>.</p>
+        </div>}
       </div>
     </div>
 

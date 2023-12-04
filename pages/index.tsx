@@ -12,7 +12,7 @@ export default function Home() {
     if(isActive && signals.value.teamAllowance.raw > 0) return <SetTeamAllowances />
     if(isActive && signals.value.contributorAllowance.raw > 0) return <BuyYFI />
     return <Lander />
-  }, [isActive, signals.value])
+  }, [isActive, signals.value]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return <main className={`
     relative max-w-6xl min-h-screen

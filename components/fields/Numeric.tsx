@@ -2,7 +2,7 @@ import { Renderable } from '@yearn-finance/web-lib/components/Renderable'
 import { formatAmount } from '@yearn-finance/web-lib/utils/format.number'
 import { useMemo } from 'react'
 
-export default function FixedNumber({ 
+export default function Numeric({ 
   value, decimals, padStart, loading 
 }: { 
   value: number | string, decimals: number, padStart?: number, loading?: boolean 
@@ -13,6 +13,6 @@ export default function FixedNumber({
   )
 
   return <Renderable fallback={'*'.repeat(formatted.length)} shouldRender={!loading}>
-    {formatted}
+    <span className="font-mono">{formatted}</span>
   </Renderable>
 }

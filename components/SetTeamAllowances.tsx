@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import AddressInput, { TInputAddressLike, defaultInputAddressLike } from './AddressInput'
+import AddressInput, { TInputAddressLike, defaultInputAddressLike } from './fields/AddressInput'
 import { handleInputChangeEventValue } from '@yearn-finance/web-lib/utils/handlers/handleInputChangeEventValue'
-import { AmountInput } from './AmountInput'
+import { AmountInput } from './fields/AmountInput'
 import { TNormalizedBN, toNormalizedBN } from '@yearn-finance/web-lib/utils/format.bigNumber'
 import { Button } from '@yearn-finance/web-lib/components/Button'
 import { formatAmount } from '@yearn-finance/web-lib/utils/format.number'
@@ -9,7 +9,7 @@ import { signals, useSignals } from 'hooks/useSignals'
 import { useContractRead, useContractWrite, usePrepareContractWrite } from 'wagmi'
 import { DISCOUNT_ADDRESS } from 'utils/constants'
 import { parseAbi } from 'viem'
-import FixedNumber from './FixedNumber'
+import Numeric from './fields/Numeric'
 
 type Contributor = { address: TInputAddressLike, allowance: TNormalizedBN }
 
@@ -78,7 +78,7 @@ export default function SetTeamAllowances() {
 
   const unallocated = useMemo(() => {
     return toNormalizedBN(signals.value.teamAllowance.raw - allocated.raw)
-  }, [allocated, signals.value])
+  }, [allocated, signals.value]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateAddress = useCallback((index: number, address: TInputAddressLike) => {
     setTeam((current) => {
@@ -144,12 +144,12 @@ export default function SetTeamAllowances() {
           <div className="font-mono font-black whitespace-nowrap">Team allowance</div>
         </div>
         <div className="flex items-end gap-1 sm:gap-3 text-sm sm:text-3xl">
-          <div className="font-mono font-black">
-            <FixedNumber value={unallocated.normalized || 0} decimals={3} loading={isFetching} />
+          <div className="font-black">
+            <Numeric value={unallocated.normalized || 0} decimals={3} loading={isFetching} />
           </div>
           <div>/</div>
-          <div className="font-mono font-black text-purple-100">
-            <FixedNumber value={signals.value.teamAllowance.normalized || 0} decimals={3} loading={isFetching} />
+          <div className="font-black text-purple-100">
+            <Numeric value={signals.value.teamAllowance.normalized || 0} decimals={3} loading={isFetching} />
           </div>
         </div>
       </div>
