@@ -12,7 +12,23 @@ import { parseAbi } from 'viem'
 import Numeric from './fields/Numeric'
 import Tokens from './fields/Tokens'
 
-type Contributor = { address: TInputAddressLike, allowance: TNormalizedBN }
+type Contributor = { 
+  address: TInputAddressLike
+  allowance: TNormalizedBN 
+  allowanceInYfi: TNormalizedBN
+}
+
+function useSpotPrice() {
+  const ethToYfi = useCallback((yfi: TNormalizedBN) => {
+    return toNormalizedBN(10n**18n * yfi.raw / signals.value.spotPrice.raw)
+  }, [signals.value]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const yfiToEth = useCallback((eth: TNormalizedBN) => {
+    return toNormalizedBN(signals.value.spotPrice.raw * eth.raw / 10n**18n)
+  }, [signals.value]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { ethToYfi, yfiToEth }
+}
 
 function ContributorRow({
   contributor, onAddressChange, onAmountChange, rowAction
@@ -22,6 +38,8 @@ function ContributorRow({
   onAmountChange: (amount: string) => boolean,
   rowAction: { label: string, onClick: () => void }
 }) {
+  const { ethToYfi } = useSpotPrice()
+
   const { data: allowance, refetch } = useContractRead({
     address: DISCOUNT_ADDRESS,
     functionName: 'contributor_allowance',
@@ -37,8 +55,8 @@ function ContributorRow({
   const currentAllowance = useMemo(() => toNormalizedBN(allowance || 0n), [allowance])
 
   const total = useMemo(() => {
-    return Number(contributor.allowance.normalized) + Number(currentAllowance.normalized)
-  }, [contributor, currentAllowance])
+    return Number(toNormalizedBN(ethToYfi(contributor.allowance).raw + ethToYfi(currentAllowance).raw).normalized)
+  }, [contributor, currentAllowance, ethToYfi])
 
   return <>
     <div className="flex items-center justify-center">
@@ -53,15 +71,15 @@ function ContributorRow({
       <AddressInput value={contributor.address} onChangeValue={onAddressChange} />
     </div>
     <div className="col-span-2">
-      <AmountInput amount={contributor.allowance} disabled={contributor.address.isValid !== true} onAmountChange={onAmountChange} />
+      <AmountInput amount={contributor.allowanceInYfi} disabled={contributor.address.isValid !== true} onAmountChange={onAmountChange} />
     </div>
     <div className="col-span-3 flex items-center justify-end gap-2 font-mono text-purple-100">
-      <div className="text-purple-100/60">{formatAmount(currentAllowance.normalized, 3, 3)}</div>
+      <div className="text-purple-100/60">{formatAmount(ethToYfi(currentAllowance).normalized, 3, 3)}</div>
       <div>+</div>
-      <div>{formatAmount(contributor.allowance.normalized, 3, 3)}</div>
+      <div>{formatAmount(contributor.allowanceInYfi.normalized, 3, 3)}</div>
       <div>=</div>
       <div className="font-bold">
-        <Tokens value={total} symbol="ETH" decimals={3} loading={false} />
+        <Tokens value={total} symbol="YFI" decimals={3} loading={false} />
       </div>
     </div>
   </>
@@ -70,10 +88,13 @@ function ContributorRow({
 export default function SetTeamAllowances() {
   const { refetch, isFetching } = useSignals()
   const [team, setTeam] = useState<Contributor[]>([])
-  const [newMember, setNewMember] = useState<Contributor>({ 
+  const [newMember, setNewMember] = useState<Contributor>({
     address: defaultInputAddressLike, 
-    allowance: toNormalizedBN(0) 
+    allowance: toNormalizedBN(0),
+    allowanceInYfi: toNormalizedBN(0)
   })
+
+  const { ethToYfi, yfiToEth } = useSpotPrice()
 
   const allocated = useMemo(() => {
     return team.reduce((sum, member) => toNormalizedBN(sum.raw + member.allowance.raw), toNormalizedBN(0))
@@ -94,10 +115,10 @@ export default function SetTeamAllowances() {
   const updateAmount = useCallback((index: number, allowance: TNormalizedBN) => {
     setTeam((current) => {
       const update = [...current]
-      update[index] = { ...update[index], allowance }
+      update[index] = { ...update[index], allowance: yfiToEth(allowance), allowanceInYfi: allowance }
       return update
     })
-  }, [setTeam])
+  }, [setTeam, yfiToEth])
 
   const args = useMemo(() => {
     const valids = team.filter(m => m.address.isValid === true)
@@ -125,7 +146,7 @@ export default function SetTeamAllowances() {
     if(!isWritten) return
     refetch()
     setTeam(current => {
-      return current.map(member => ({ ...member, allowance: toNormalizedBN(0) }))
+      return current.map(member => ({ ...member, allowance: toNormalizedBN(0), allowanceInYfi: toNormalizedBN(0) }))
     })
   }, [isWritten, refetch, setTeam])
 
@@ -148,11 +169,11 @@ export default function SetTeamAllowances() {
         </div>
         <div className="flex items-end gap-1 sm:gap-3 text-sm sm:text-3xl">
           <div className="font-black">
-            <Numeric value={unallocated.normalized || 0} decimals={3} loading={isFetching} />
+            <Numeric value={ethToYfi(unallocated).normalized} decimals={3} loading={isFetching} />
           </div>
           <div>/</div>
           <div className="font-black text-purple-100">
-            <Tokens value={signals.value.teamAllowance.normalized || 0} symbol="ETH" decimals={3} loading={isFetching} />
+            <Tokens value={ethToYfi(signals.value.teamAllowance).normalized} symbol="YFI" decimals={3} loading={isFetching} />
           </div>
         </div>
       </div>
@@ -179,7 +200,7 @@ export default function SetTeamAllowances() {
           }} 
           onAmountChange={(amount) => {
             const amountBn = handleInputChangeEventValue(amount, 18)
-            const overAllowance =  (unallocated.raw + member.allowance.raw - amountBn.raw) < 0
+            const overAllowance = (ethToYfi(unallocated).raw + ethToYfi(member.allowance).raw - amountBn.raw) < 0
             if(overAllowance) return false
             updateAmount(index, amountBn)
             return true
@@ -195,8 +216,8 @@ export default function SetTeamAllowances() {
         <ContributorRow contributor={newMember} 
           onAddressChange={value => {
             if(value.isValid === true) {
-              setTeam(current => [...current, { address: value, allowance: toNormalizedBN(0) }])
-              setNewMember({ address: defaultInputAddressLike, allowance: toNormalizedBN(0) })
+              setTeam(current => [...current, { address: value, allowance: toNormalizedBN(0), allowanceInYfi: toNormalizedBN(0) }])
+              setNewMember({ address: defaultInputAddressLike, allowance: toNormalizedBN(0), allowanceInYfi: toNormalizedBN(0) })
             } else {
               setNewMember(current => ({ ...current, address: value }))
             }
@@ -205,12 +226,12 @@ export default function SetTeamAllowances() {
             const amountBn = handleInputChangeEventValue(amount, 18)
             const overAllowance =  (unallocated.raw - amountBn.raw) < 0
             if(overAllowance) return false
-            setNewMember(current => ({ ...current, allowance: amountBn }))
+            setNewMember(current => ({ ...current, allowance: yfiToEth(amountBn), allowanceInYfi: amountBn }))
             return true
           }}
           rowAction={{ label: 'add', onClick: () => {
             setTeam(current => [...current, newMember])
-            setNewMember({ address: defaultInputAddressLike, allowance: toNormalizedBN(0) })
+            setNewMember({ address: defaultInputAddressLike, allowance: toNormalizedBN(0), allowanceInYfi: toNormalizedBN(0) })
           }}}
         />
       </div>
