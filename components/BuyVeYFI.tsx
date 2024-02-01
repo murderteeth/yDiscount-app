@@ -1,4 +1,3 @@
-import { signals, useSignals } from 'hooks/useSignals'
 import Numeric from './fields/Numeric'
 import { useContractRead, useContractReads, useContractWrite, usePrepareContractWrite } from 'wagmi'
 import { DISCOUNT_ADDRESS, VEYFI_ADDRESS } from 'utils/constants'
@@ -17,6 +16,7 @@ import Accordian from './Accordian'
 import AddressInput, { TInputAddressLike } from './fields/AddressInput'
 import { formatAmount } from '@yearn-finance/web-lib/utils/format.number'
 import { useBlock } from 'hooks/useBlock'
+import { useData } from 'hooks/useData'
 
 function Row({ label, disabled, className, children }: { label: string, disabled?: boolean, className?: string, children: React.ReactNode }) {
   return <div className={`
@@ -117,7 +117,7 @@ export default function BuyVeYFI() {
     return sender
   }, [sender, delegate])
 
-  const { refetch, isFetching } = useSignals()
+  const { refetch, isFetching, month, contributorAllowance } = useData()
   const { data: onchain, refetch: refetchOnchain, isFetching: isFetchingOnchain } = useOnchainData({ address })
 
   const { block } = useBlock()
@@ -145,14 +145,14 @@ export default function BuyVeYFI() {
 
   const allowanceYfi = useMemo(() => {
     if(!onchain || onchain.price.raw === 0n) return toNormalizedBN(0)
-    return toNormalizedBN(10n**18n * signals.value.contributorAllowance.raw / onchain.price.raw)
-  }, [signals.value, onchain]) // eslint-disable-line react-hooks/exhaustive-deps
+    return toNormalizedBN(10n**18n * contributorAllowance.raw / onchain.price.raw)
+  }, [contributorAllowance, onchain])
 
   const preview = usePreview({ 
     address, 
     amount: buy.amount,
     allowance: allowanceYfi,
-    delegate: delegate.isValid === true, 
+    delegate: delegate.isValid === true && delegate.address !== sender,
     minLock
   })
 
@@ -165,11 +165,11 @@ export default function BuyVeYFI() {
     const amountBn = handleInputChangeEventValue(amount, 18)
     if(allowanceYfi.raw < amountBn.raw) return
     setBuy(current => ({ ...current, amount: amountBn }))
-  }, [signals.value, setBuy, allowanceYfi]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setBuy, allowanceYfi])
 
   const onMaxClick = useCallback(() => {
     setBuy(current => ({ ...current, amount: allowanceYfi }))
-  }, [signals.value, setBuy, allowanceYfi]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setBuy, allowanceYfi])
 
   const onSlippageChange = useCallback((amount: TNormalizedBN) => {
     setBuy(current => ({ ...current, slippage: amount }))
@@ -188,8 +188,9 @@ export default function BuyVeYFI() {
   const cta = useMemo(() => {
     const amount = formatAmount(buy.amount.normalized, 3, 3)
     const price = formatAmount(preview.preview?.normalized || 0, 3, 3)
+    if(delegate.isValid && delegate.address !== sender) return `Delegate ${amount} veYFI for ${price} ETH`
     return `Buy ${amount} veYFI for ${price} ETH`
-  }, [buy, preview])
+  }, [buy, preview, delegate, sender])
 
   const { config, isError: isBuyError } = usePrepareContractWrite({
     enabled: !!address && allowanceYfi.raw >= 0n && minAmount.raw > 0n,
@@ -213,6 +214,15 @@ export default function BuyVeYFI() {
     setBuy(current => ({ ...current, amount: toNormalizedBN(0) }))
   }, [isWritten, refetch, refetchOnchain, setBuy])
 
+  const validation = useMemo(() => {
+    const hasLock = (onchain?.veYFI.locked.raw || 0) > 0
+    return {
+      hasLock,
+      minLock,
+      disabled: !(hasLock && minLock)
+    }
+  }, [onchain, minLock])
+
   return <div className="w-full flex flex-col items-start gap-8">
     <div className={`w-full pb-2
       flex items-center justify-between
@@ -223,7 +233,7 @@ export default function BuyVeYFI() {
 
       <div className="w-1/3 font-bold text-center">
         <div className="text-xs sm:text-sm">Month</div>
-        <div className="font-mono text-sm sm:text-3xl">{signals.value.month}</div>
+        <div className="font-mono text-sm sm:text-3xl">{month}</div>
       </div>
 
       <div className="w-1/3 flex flex-col items-end">
@@ -237,39 +247,45 @@ export default function BuyVeYFI() {
     </div>
 
     <div className="w-full sm:w-3/4 sm:mx-auto flex flex-col gap-4">
-      <Row label="veYFI" disabled={!minLock}>
+
+      <Row label="veYFI" disabled={validation.hasLock && !validation.minLock} className={`${!validation.hasLock ? 'text-pink-400' : ''}`}>
         <Numeric value={onchain?.veYFI.locked.normalized || 0} decimals={3} loading={isFetchingOnchain} />
+        {!validation.hasLock && <p className='absolute sm:right-0 text-sm text-neutral-100'>
+          {delegate.isValid ? `Delegate has no locked YFI. They need some skin in the game first, anon!` : `You don't have any locked YFI. Get some skin in the game first, anon!`}
+        </p>}
       </Row>
-      <Row label="Expiration" className={`${!minLock ? 'text-pink-400' : ''}`}>
+
+      <Row label="Expiration" disabled={!validation.hasLock} className={`${validation.hasLock && !minLock ? 'text-pink-400' : ''}`}>
         <Text value={new Date(onchain?.veYFI.expiration || 0).toDateString()} loading={isFetchingOnchain} />
-        {!minLock && <p className='absolute sm:right-0 text-sm text-neutral-100'>
+        {validation.hasLock && !minLock && <p className='absolute sm:right-0 text-sm text-neutral-100'>
           Expiration doesn`&apos;`t meet the {delegate.isValid ? '2 year' : '4 week'} minimum lockup =(
         </p>}
       </Row>
-      <Row label="YFI spot price" disabled={!minLock}>
+
+      <Row label="YFI spot price" disabled={validation.disabled}>
         <Tokens value={onchain?.price.normalized} symbol={'ETH'} decimals={3} loading={isFetchingOnchain} />
       </Row>
-      <Row label="Discount" className="text-lg font-bold" disabled={!minLock}>
+      <Row label="Discount" className="text-lg font-bold" disabled={validation.disabled}>
         <Percent value={onchain?.discount.normalized || 0} decimals={2} loading={isFetchingOnchain} />
       </Row>
-      <Row label="Buy veYFI" className="text-lg font-bold" disabled={!minLock}>
+      <Row label="Buy veYFI" className="text-lg font-bold" disabled={validation.disabled}>
         <AmountInput
           amount={buy.amount}
-          disabled={!minLock}
+          disabled={validation.disabled}
           maxAmount={allowanceYfi}
           onAmountChange={onAmountChange}
           onMaxClick={onMaxClick} />
       </Row>
-      <Row label="Max slippage" disabled={!minLock}>
+      <Row label="Max slippage" disabled={validation.disabled}>
         <PercentInput
           amount={buy.slippage} 
-          disabled={!minLock}
+          disabled={validation.disabled}
           onAmountChange={onSlippageChange} />
       </Row>
-      <Row label="Cost" className="text-lg" disabled={!minLock}>
+      <Row label="Cost" className="text-lg" disabled={validation.disabled}>
         <Tokens value={preview.preview?.normalized} symbol={'ETH'} decimals={3} loading={preview.isFetchingPreview} />
       </Row>
-      <Row label="You get at least" className="text-sm" disabled={!minLock}>
+      <Row label="You get at least" className="text-sm" disabled={validation.disabled}>
         <Tokens value={minAmount.normalized} symbol={'veYFI'} decimals={3} />
       </Row>
       <Row label="You save" className={`text-sm ${minLock && !minLock || savings.raw > 0n ? 'text-orange-100' : ''}`} disabled={!minLock || savings.raw === 0n}>
@@ -280,8 +296,8 @@ export default function BuyVeYFI() {
         <Button
           onClick={onBuy}
           isBusy={isWriting}
-          isDisabled={!minLock || buy.amount.raw === 0n || isBuyError}
-          className={'w-fit border-none'}>
+          isDisabled={validation.disabled || buy.amount.raw === 0n || isBuyError}
+          className={'font-mono w-fit border-none'}>
           {cta}
         </Button>
       </div>
@@ -290,7 +306,7 @@ export default function BuyVeYFI() {
         <div className="p-2 flex flex-col gap-2">
           <AddressInput value={delegate} onChangeValue={setDelegate} />
           <p className="p-2">
-            Woof. Apples ducks straw, quail a ostriches donkey, hay hook cucumbers. veterinarian blue berries cattle jelly canning. Augers oats hen cowpies. Prairie dogs raccoons robins rats. Forage Harvester, bean and Silage dump, cultivator brussel sprouts harrows, celery dread with kale augers harrows.
+            Enter an address to delegate your allowance.
           </p>
         </div>
       </Accordian>

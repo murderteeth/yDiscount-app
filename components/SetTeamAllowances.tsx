@@ -5,12 +5,12 @@ import { AmountInput } from './fields/AmountInput'
 import { TNormalizedBN, toNormalizedBN } from '@yearn-finance/web-lib/utils/format.bigNumber'
 import { Button } from '@yearn-finance/web-lib/components/Button'
 import { formatAmount } from '@yearn-finance/web-lib/utils/format.number'
-import { signals, useSignals } from 'hooks/useSignals'
 import { useContractRead, useContractWrite, usePrepareContractWrite } from 'wagmi'
 import { DISCOUNT_ADDRESS } from 'utils/constants'
 import { parseAbi } from 'viem'
 import Numeric from './fields/Numeric'
 import Tokens from './fields/Tokens'
+import { useData } from 'hooks/useData'
 
 type Contributor = { 
   address: TInputAddressLike
@@ -19,13 +19,15 @@ type Contributor = {
 }
 
 function useSpotPrice() {
+  const { spotPrice } = useData()
+
   const ethToYfi = useCallback((yfi: TNormalizedBN) => {
-    return toNormalizedBN(10n**18n * yfi.raw / signals.value.spotPrice.raw)
-  }, [signals.value]) // eslint-disable-line react-hooks/exhaustive-deps
+    return toNormalizedBN(10n**18n * yfi.raw / spotPrice.raw)
+  }, [spotPrice])
 
   const yfiToEth = useCallback((eth: TNormalizedBN) => {
-    return toNormalizedBN(signals.value.spotPrice.raw * eth.raw / 10n**18n)
-  }, [signals.value]) // eslint-disable-line react-hooks/exhaustive-deps
+    return toNormalizedBN(spotPrice.raw * eth.raw / 10n**18n)
+  }, [spotPrice])
 
   return { ethToYfi, yfiToEth }
 }
@@ -86,7 +88,7 @@ function ContributorRow({
 }
 
 export default function SetTeamAllowances() {
-  const { refetch, isFetching } = useSignals()
+  const { refetch, isFetching, month, teamAllowance } = useData()
   const [team, setTeam] = useState<Contributor[]>([])
   const [newMember, setNewMember] = useState<Contributor>({
     address: defaultInputAddressLike, 
@@ -101,8 +103,8 @@ export default function SetTeamAllowances() {
   }, [team])
 
   const unallocated = useMemo(() => {
-    return toNormalizedBN(signals.value.teamAllowance.raw - allocated.raw)
-  }, [allocated, signals.value]) // eslint-disable-line react-hooks/exhaustive-deps
+    return toNormalizedBN(teamAllowance.raw - allocated.raw)
+  }, [allocated, teamAllowance])
 
   const updateAddress = useCallback((index: number, address: TInputAddressLike) => {
     setTeam((current) => {
@@ -133,7 +135,7 @@ export default function SetTeamAllowances() {
     functionName: 'set_contributor_allowances',
     args,
     abi: parseAbi(['function set_contributor_allowances(address[] contributors, uint256[] allowances)']),
-    enabled: signals.value.teamAllowance.raw > 0
+    enabled: teamAllowance.raw > 0
   })
 
   const { write, isLoading: isWriting, isSuccess: isWritten } = useContractWrite(config)
@@ -160,7 +162,7 @@ export default function SetTeamAllowances() {
 
       <div className="w-1/3 font-bold text-center">
         <div className="text-xs sm:text-sm">Month</div>
-        <div className="font-mono text-sm sm:text-3xl">{signals.value.month}</div>
+        <div className="font-mono text-sm sm:text-3xl">{month}</div>
       </div>
 
       <div className="w-1/3 flex flex-col items-end">
@@ -173,7 +175,7 @@ export default function SetTeamAllowances() {
           </div>
           <div>/</div>
           <div className="font-black text-purple-100">
-            <Tokens value={ethToYfi(signals.value.teamAllowance).normalized} symbol="YFI" decimals={3} loading={isFetching} />
+            <Tokens value={ethToYfi(teamAllowance).normalized} symbol="YFI" decimals={3} loading={isFetching} />
           </div>
         </div>
       </div>
@@ -242,7 +244,7 @@ export default function SetTeamAllowances() {
           isBusy={isWriting}
           isDisabled={false}
           className={'w-fit border-none'}>
-          {`Add to month ${signals.value.month} allowances`}
+          {`Add to month ${month} allowances`}
         </Button>
       </div>
     </div>
