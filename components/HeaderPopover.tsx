@@ -3,8 +3,7 @@ import Link from 'next/link'
 import { Popover, Transition } from '@headlessui/react'
 import { APPS } from './HeaderPopover.apps'
 import type { ReactElement } from 'react'
-import { ImageWithFallback } from './ImageWithFallback'
-import { DYFI_ADDRESS } from 'utils/constants'
+import { LogoYearn } from './icons/LogoYearn'
 
 function LogoPopover(): ReactElement {
 	const [isShowing, set_isShowing] = useState(false)
@@ -17,14 +16,10 @@ function LogoPopover(): ReactElement {
 			<Popover.Button className={'flex items-center'}>
 				<Link href={'/'}>
 					<span className={'sr-only'}>{'Back to home'}</span>
-					<ImageWithFallback
-						alt={'yETH'}
+					<LogoYearn
 						className={'h-8 w-8'}
-						width={64}
-						height={64}
-						src={`${process.env.SMOL_ASSETS_URL}/token/1/${DYFI_ADDRESS}/logo-128.png`}
-						loading={'eager'}
-						priority />
+						back={'text-[#6b21a8]'}
+						front={'text-white'} />
 				</Link>
 			</Popover.Button>
 			<Transition

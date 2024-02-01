@@ -2,7 +2,7 @@ import { useWeb3 } from '@yearn-finance/web-lib/contexts/useWeb3'
 import SetTeamAllowances from 'components/SetTeamAllowances'
 import BuyVeYFI from 'components/BuyVeYFI'
 import Lander from 'components/Lander'
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { useData } from 'hooks/useData'
 
 export default function Home() {
@@ -10,8 +10,8 @@ export default function Home() {
   const { teamAllowance, contributorAllowance } = useData()
 
   const component = useMemo(() => {
-    if(isActive && teamAllowance.raw > 0) return <SetTeamAllowances />
-    if(isActive && contributorAllowance.raw > 0) return <BuyVeYFI />
+    if(isActive && teamAllowance.raw > 100n) return <SetTeamAllowances />
+    if(isActive && contributorAllowance.raw > 100n) return <BuyVeYFI />
     return <Lander />
   }, [isActive, teamAllowance, contributorAllowance])
 

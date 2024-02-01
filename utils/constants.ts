@@ -1,5 +1,8 @@
 import { getAddress } from 'viem'
 
+export const TEN_PERCENT = 100_000_000_000_000_000n
+export const HUDRED_PERCENT = 1_000_000_000_000_000_000n
+
 export const DEFAULT_CHAIN_ID = 1
 export const DISCOUNT_ADDRESS = getAddress('0x11e4757b9F88Cf17f8A0f5Ea7e6B4F40aFFeb958')
 export const LENS_ADDRESS = getAddress('0x83d95e0D5f402511dB06817Aff3f9eA88224B030')

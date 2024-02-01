@@ -22,6 +22,7 @@ function useSpotPrice() {
   const { spotPrice } = useData()
 
   const ethToYfi = useCallback((yfi: TNormalizedBN) => {
+    if(spotPrice.raw === 0n) return toNormalizedBN(0n)
     return toNormalizedBN(10n**18n * yfi.raw / spotPrice.raw)
   }, [spotPrice])
 
@@ -187,7 +188,7 @@ export default function SetTeamAllowances() {
       <div className="grid grid-cols-12 gap-4">
         <div></div>
         <div className="col-span-6">address \ ens \ lens</div>
-        <div className="col-span-2">allowance</div>
+        <div className="col-span-2">add allowance</div>
         <div className="col-span-3 flex items-center justify-end gap-2 font-mono text-purple-100">
           <div className="text-purple-100/60">current</div>
           <div>+</div>
