@@ -13,6 +13,6 @@ export default function Numeric({
   )
 
   return <Renderable fallback={'*'.repeat(formatted.length)} shouldRender={!loading}>
-    <span className="font-mono">{formatted}</span>
+    <span className="font-mono" suppressHydrationWarning>{formatted}</span>
   </Renderable>
 }

@@ -1,7 +1,6 @@
-import { signals, useSignals } from 'hooks/useSignals'
 import Numeric from './fields/Numeric'
 import { useContractRead, useContractReads, useContractWrite, usePrepareContractWrite } from 'wagmi'
-import { DISCOUNT_ADDRESS, VEYFI_ADDRESS } from 'utils/constants'
+import { DISCOUNT_ADDRESS, HUDRED_PERCENT as HUNDRED_PERCENT, TEN_PERCENT, VEYFI_ADDRESS } from 'utils/constants'
 import { useWeb3 } from '@yearn-finance/web-lib/contexts/useWeb3'
 import { parseAbi } from 'viem'
 import { TNormalizedBN, toNormalizedBN } from '@yearn-finance/web-lib/utils/format.bigNumber'
@@ -17,6 +16,7 @@ import Accordian from './Accordian'
 import AddressInput, { TInputAddressLike } from './fields/AddressInput'
 import { formatAmount } from '@yearn-finance/web-lib/utils/format.number'
 import { useBlock } from 'hooks/useBlock'
+import { useData } from 'hooks/useData'
 
 function Row({ label, disabled, className, children }: { label: string, disabled?: boolean, className?: string, children: React.ReactNode }) {
   return <div className={`
@@ -32,7 +32,7 @@ function Row({ label, disabled, className, children }: { label: string, disabled
   </div>
 }
 
-function useOnchainData({ address }: { address?: `0x${string}` }) {
+function useOnchainData({ address, delegate }: { address?: `0x${string}`, delegate?: boolean }) {
   const { data, refetch, isFetching } = useContractReads({
     enabled: !!address,
     contracts: [{
@@ -52,7 +52,7 @@ function useOnchainData({ address }: { address?: `0x${string}` }) {
     }],
     select: data => {
       const result = {
-        veYFI: {
+        veYfi: {
           locked: toNormalizedBN(0),
           expiration: 0
         },
@@ -61,14 +61,18 @@ function useOnchainData({ address }: { address?: `0x${string}` }) {
       }
 
       if(data[0].status === 'success') {
-        result.veYFI = {
+        result.veYfi = {
           locked: toNormalizedBN(data[0].result[0] || 0n),
           expiration: Number(data[0].result[1] * 1000n || 0)
         }
       }
 
-      if(data[1].status === 'success') {
-        result.discount = toNormalizedBN(data[1].result)
+      if(delegate) {
+        result.discount = toNormalizedBN(TEN_PERCENT)
+      } else {
+        if(data[1].status === 'success') {
+          result.discount = toNormalizedBN(data[1].result)
+        }
       }
 
       if(data[2].status === 'success') {
@@ -82,24 +86,27 @@ function useOnchainData({ address }: { address?: `0x${string}` }) {
   return { data, refetch, isFetching }
 }
 
-function usePreview({ 
-  address, amount, delegate, allowance, minLock
+function usePreview({
+  address, amountInEth, delegate, allowance, minLock
 }: { 
-  address?: `0x${string}`, amount: TNormalizedBN, delegate: boolean, allowance: TNormalizedBN, minLock?: boolean 
+  address?: `0x${string}`, amountInEth: TNormalizedBN, delegate: boolean, allowance: TNormalizedBN, minLock?: boolean 
 }) {
   const { data, isFetching } = useContractRead({
     enabled: !!address && allowance.raw > 0n && minLock,
     address: DISCOUNT_ADDRESS,
     functionName: 'preview',
-    args: [address as `0x${string}`, amount.raw, delegate],
+    args: [address as `0x${string}`, amountInEth.raw, delegate],
     abi: parseAbi(['function preview(address, uint256, bool) external view returns (uint256)']),
     select: data => toNormalizedBN(data)
   })
-  return { preview: data, isFetchingPreview: isFetching }
+  return { amountInYfi: data, isFetchingPreview: isFetching }
 }
 
 export default function BuyVeYFI() {
-  const [buy, setBuy] = useState({ 
+  const { address: sender } = useWeb3()
+  const { block } = useBlock()
+
+  const [buyYFI, setBuyYFI] = useState({ 
     amount: toNormalizedBN(0), 
     slippage: toNormalizedBN(50)
   })
@@ -110,19 +117,23 @@ export default function BuyVeYFI() {
     isValid: false 
   })
 
-  const { address: sender } = useWeb3()
-  const address = useMemo(() => {
-    if(!sender) return undefined
-    if(delegate.isValid) return delegate.address
-    return sender
-  }, [sender, delegate])
+  const onChangeDelegate = useCallback((value: TInputAddressLike) => {
+    setBuyYFI(current => ({ ...current, amount: toNormalizedBN(0) }))
+    setDelegate(value)
+  }, [setDelegate, setBuyYFI])
 
-  const { refetch, isFetching } = useSignals()
-  const { data: onchain, refetch: refetchOnchain, isFetching: isFetchingOnchain } = useOnchainData({ address })
+  const { refetch, isFetching, month, contributorAllowance } = useData()
+  const { data: senderData, refetch: refetchOnchain, isFetching: isFetchingOnchain } = useOnchainData({ address: sender })
+  const { data: delegateData } = useOnchainData({ address: delegate.address, delegate: true })
 
-  const { block } = useBlock()
+  const discountPrice = useMemo(() => {
+    if(!(senderData)) return toNormalizedBN(0)
+    if(delegate.isValid === true && delegateData) return toNormalizedBN(senderData.price.raw * (HUNDRED_PERCENT - delegateData.discount.raw) / 10n**18n)
+    return toNormalizedBN(senderData.price.raw * (HUNDRED_PERCENT - senderData.discount.raw) / 10n**18n)
+  }, [senderData, delegate, delegateData])
+
   const minLock = useMemo(() => {
-    if(!(block && onchain)) return false
+    if(!(block && senderData)) return false
 
     const WEEK = 7 * 24 * 60 * 60 * 1000
     const MIN_LOCK_WEEKS = 4
@@ -131,73 +142,83 @@ export default function BuyVeYFI() {
 
     const timestamp = Number(block.timestamp) * 1000
     const weeks = Math.min(
-      Math.floor(onchain?.veYFI.expiration / WEEK)
+      Math.floor(senderData?.veYfi.expiration / WEEK)
       - Math.floor(timestamp / WEEK),
       CAP_DISCOUNT_WEEKS
     )
 
-    if(delegate.isValid) {
+    if(delegate.isValid === true) {
       return weeks >= DELEGATE_MIN_LOCK_WEEKS
     } else {
       return weeks >= MIN_LOCK_WEEKS
     }
-  }, [block, onchain, delegate])
+  }, [block, senderData, delegate])
+
+  const toEth = useCallback((yfi: TNormalizedBN | undefined, applyDiscount = false) => {
+    if(!(senderData && yfi)) return toNormalizedBN(0)
+    if(applyDiscount) return toNormalizedBN(yfi.raw * discountPrice.raw / 10n**18n)
+    return toNormalizedBN(yfi.raw * senderData.price.raw / 10n**18n)
+  }, [senderData, discountPrice])
+
+  const toYfi = useCallback((eth: TNormalizedBN | undefined, applyDiscount = false) => {
+    if(!(senderData && eth)) return toNormalizedBN(0)
+    if(applyDiscount) return toNormalizedBN(10n**18n * eth.raw / discountPrice.raw)
+    return toNormalizedBN(10n**18n * eth.raw / senderData.price.raw)
+  }, [senderData, discountPrice])
 
   const allowanceYfi = useMemo(() => {
-    if(!onchain || onchain.price.raw === 0n) return toNormalizedBN(0)
-    return toNormalizedBN(10n**18n * signals.value.contributorAllowance.raw / onchain.price.raw)
-  }, [signals.value, onchain]) // eslint-disable-line react-hooks/exhaustive-deps
+    if(!senderData || senderData.price.raw === 0n) return toNormalizedBN(0)
+    return toYfi(contributorAllowance, true)
+  }, [contributorAllowance, senderData, toYfi])
+
+  const recipient = useMemo(() => delegate.isValid === true ? delegate.address : sender, [delegate, sender])
 
   const preview = usePreview({ 
-    address, 
-    amount: buy.amount,
+    address: recipient, 
+    amountInEth: toEth(buyYFI.amount, true),
+    delegate: delegate.isValid === true && delegate.address !== sender,
     allowance: allowanceYfi,
-    delegate: delegate.isValid === true, 
     minLock
   })
-
-  const toETH = useCallback((yfi: TNormalizedBN) => {
-    if(!onchain) return toNormalizedBN(0)
-    return toNormalizedBN(yfi.raw * onchain.price.raw / 10n**18n)
-  }, [onchain])
 
   const onAmountChange = useCallback((amount: string) => {
     const amountBn = handleInputChangeEventValue(amount, 18)
     if(allowanceYfi.raw < amountBn.raw) return
-    setBuy(current => ({ ...current, amount: amountBn }))
-  }, [signals.value, setBuy, allowanceYfi]) // eslint-disable-line react-hooks/exhaustive-deps
+    setBuyYFI(current => ({ ...current, amount: amountBn }))
+  }, [setBuyYFI, allowanceYfi])
 
   const onMaxClick = useCallback(() => {
-    setBuy(current => ({ ...current, amount: allowanceYfi }))
-  }, [signals.value, setBuy, allowanceYfi]) // eslint-disable-line react-hooks/exhaustive-deps
+    setBuyYFI(current => ({ ...current, amount: allowanceYfi }))
+  }, [setBuyYFI, allowanceYfi])
 
   const onSlippageChange = useCallback((amount: TNormalizedBN) => {
-    setBuy(current => ({ ...current, slippage: amount }))
+    setBuyYFI(current => ({ ...current, slippage: amount }))
   }, [])
 
   const minAmount = useMemo(() => {
-    return toNormalizedBN(buy.amount.raw - (buy.amount.raw * buy.slippage.raw / 10_000n))
-  }, [buy])
+    return toNormalizedBN(buyYFI.amount.raw - (buyYFI.amount.raw * buyYFI.slippage.raw / 10_000n))
+  }, [buyYFI])
 
   const savings = useMemo(() => {
-    if(!onchain || !preview.preview) return toNormalizedBN(0)
-    const marketRate = (onchain.price.raw * buy.amount.raw) / 10n**18n
-    return toNormalizedBN(marketRate - preview.preview.raw)
-  }, [onchain, preview, buy])
+    if(!senderData || !preview.amountInYfi) return toNormalizedBN(0)
+    const marketRate = (senderData.price.raw * buyYFI.amount.raw) / 10n**18n
+    return toNormalizedBN(marketRate - toEth(preview.amountInYfi, true).raw)
+  }, [senderData, preview, buyYFI, toEth])
 
   const cta = useMemo(() => {
-    const amount = formatAmount(buy.amount.normalized, 3, 3)
-    const price = formatAmount(preview.preview?.normalized || 0, 3, 3)
-    return `Buy ${amount} veYFI for ${price} ETH`
-  }, [buy, preview])
+    const amount = formatAmount(minAmount.normalized, 3, 3)
+    const price = formatAmount(toEth(preview.amountInYfi, true).normalized || 0, 3, 3)
+    if(delegate.isValid && delegate.address !== sender) return `Delegate at least ${amount} veYFI for ${price} ETH`
+    return `Buy at least ${amount} veYFI for ${price} ETH`
+  }, [preview, delegate, sender, minAmount, toEth])
 
   const { config, isError: isBuyError } = usePrepareContractWrite({
-    enabled: !!address && allowanceYfi.raw >= 0n && minAmount.raw > 0n,
+    enabled: !!recipient && allowanceYfi.raw >= 0n && minAmount.raw > 0n,
     address: DISCOUNT_ADDRESS,
     functionName: 'buy',
-    args: [minAmount.raw, address as `0x${string}`],
+    args: [minAmount.raw, recipient as `0x${string}`],
     abi: parseAbi(['function buy(uint256, address) payable']),
-    value: toETH(preview.preview || toNormalizedBN(0)).raw
+    value: toEth(buyYFI.amount, true).raw
   })
 
   const { write, isLoading: isWriting, isSuccess: isWritten } = useContractWrite(config)
@@ -210,8 +231,22 @@ export default function BuyVeYFI() {
     if(!isWritten) return
     refetch()
     refetchOnchain()
-    setBuy(current => ({ ...current, amount: toNormalizedBN(0) }))
-  }, [isWritten, refetch, refetchOnchain, setBuy])
+    setBuyYFI(current => ({ ...current, amount: toNormalizedBN(0) }))
+  }, [isWritten, refetch, refetchOnchain, setBuyYFI])
+
+  const validation = useMemo(() => {
+    const hasLock = (senderData?.veYfi.locked.raw || 0) > 0
+    return {
+      hasLock,
+      minLock,
+      disabled: !(hasLock && minLock)
+    }
+  }, [senderData, minLock])
+
+  const discount = useMemo(() => {
+    if(delegate.isValid === true && delegateData) return delegateData.discount.normalized || 0
+    return senderData?.discount.normalized || 0
+  }, [senderData, delegate, delegateData])
 
   return <div className="w-full flex flex-col items-start gap-8">
     <div className={`w-full pb-2
@@ -223,7 +258,7 @@ export default function BuyVeYFI() {
 
       <div className="w-1/3 font-bold text-center">
         <div className="text-xs sm:text-sm">Month</div>
-        <div className="font-mono text-sm sm:text-3xl">{signals.value.month}</div>
+        <div className="font-mono text-sm sm:text-3xl">{month}</div>
       </div>
 
       <div className="w-1/3 flex flex-col items-end">
@@ -237,60 +272,69 @@ export default function BuyVeYFI() {
     </div>
 
     <div className="w-full sm:w-3/4 sm:mx-auto flex flex-col gap-4">
-      <Row label="veYFI" disabled={!minLock}>
-        <Numeric value={onchain?.veYFI.locked.normalized || 0} decimals={3} loading={isFetchingOnchain} />
+
+      <Row label="veYFI" disabled={validation.hasLock && !validation.minLock} className={`${!validation.hasLock ? 'text-pink-400' : ''}`}>
+        <Numeric value={senderData?.veYfi.locked.normalized || 0} decimals={3} loading={isFetchingOnchain} />
+        {!validation.hasLock && <p className='absolute sm:right-0 text-sm text-neutral-100'>
+          {delegate.isValid ? `Delegate has no locked YFI. They need some skin in the game first, anon!` : `You don't have any locked YFI. Get some skin in the game first, anon!`}
+        </p>}
       </Row>
-      <Row label="Expiration" className={`${!minLock ? 'text-pink-400' : ''}`}>
-        <Text value={new Date(onchain?.veYFI.expiration || 0).toDateString()} loading={isFetchingOnchain} />
-        {!minLock && <p className='absolute sm:right-0 text-sm text-neutral-100'>
+
+      <Row label="Expiration" disabled={!validation.hasLock} className={`${validation.hasLock && !minLock ? 'text-pink-400' : ''}`}>
+        <Text value={new Date(senderData?.veYfi.expiration || 0).toDateString()} loading={isFetchingOnchain} />
+        {validation.hasLock && !minLock && <p className='absolute sm:right-0 text-sm text-neutral-100'>
           Expiration doesn`&apos;`t meet the {delegate.isValid ? '2 year' : '4 week'} minimum lockup =(
         </p>}
       </Row>
-      <Row label="YFI spot price" disabled={!minLock}>
-        <Tokens value={onchain?.price.normalized} symbol={'ETH'} decimals={3} loading={isFetchingOnchain} />
+
+      <Row label="Discount" className="text-lg font-bold" disabled={validation.disabled}>
+        <Percent value={discount} decimals={2} loading={isFetchingOnchain} />
       </Row>
-      <Row label="Discount" className="text-lg font-bold" disabled={!minLock}>
-        <Percent value={onchain?.discount.normalized || 0} decimals={2} loading={isFetchingOnchain} />
+      <Row label="YFI spot price" disabled={validation.disabled}>
+        <Tokens value={senderData?.price.normalized} symbol={'ETH'} decimals={3} loading={isFetchingOnchain} />
       </Row>
-      <Row label="Buy veYFI" className="text-lg font-bold" disabled={!minLock}>
+      <Row label="Discount price" disabled={validation.disabled}>
+        <Tokens value={discountPrice.normalized} symbol={'ETH'} decimals={3} loading={isFetchingOnchain} />
+      </Row>
+      <Row label="Buy veYFI" className="text-lg font-bold" disabled={validation.disabled}>
         <AmountInput
-          amount={buy.amount}
-          disabled={!minLock}
+          amount={buyYFI.amount}
+          disabled={validation.disabled}
           maxAmount={allowanceYfi}
           onAmountChange={onAmountChange}
           onMaxClick={onMaxClick} />
       </Row>
-      <Row label="Max slippage" disabled={!minLock}>
+      <Row label="Max slippage" disabled={validation.disabled}>
         <PercentInput
-          amount={buy.slippage} 
-          disabled={!minLock}
+          amount={buyYFI.slippage} 
+          disabled={validation.disabled}
           onAmountChange={onSlippageChange} />
       </Row>
-      <Row label="Cost" className="text-lg" disabled={!minLock}>
-        <Tokens value={preview.preview?.normalized} symbol={'ETH'} decimals={3} loading={preview.isFetchingPreview} />
-      </Row>
-      <Row label="You get at least" className="text-sm" disabled={!minLock}>
+      <Row label="You get at least" className="text-sm" disabled={validation.disabled}>
         <Tokens value={minAmount.normalized} symbol={'veYFI'} decimals={3} />
       </Row>
       <Row label="You save" className={`text-sm ${minLock && !minLock || savings.raw > 0n ? 'text-orange-100' : ''}`} disabled={!minLock || savings.raw === 0n}>
         <Tokens value={savings.normalized} symbol={'ETH'} decimals={3} />
+      </Row>
+      <Row label="You pay" className="text-lg" disabled={validation.disabled}>
+        <Tokens value={toEth(preview.amountInYfi, true)?.normalized} symbol={'ETH'} decimals={3} loading={preview.isFetchingPreview} />
       </Row>
 
       <div className="py-4 flex justify-end">
         <Button
           onClick={onBuy}
           isBusy={isWriting}
-          isDisabled={!minLock || buy.amount.raw === 0n || isBuyError}
-          className={'w-fit border-none'}>
+          isDisabled={validation.disabled || buyYFI.amount.raw === 0n || isBuyError}
+          className={'font-mono w-fit border-none'}>
           {cta}
         </Button>
       </div>
 
       <Accordian title={'Delegate'} expanded={false} className="py-2 border-t border-purple-400/20">
         <div className="p-2 flex flex-col gap-2">
-          <AddressInput value={delegate} onChangeValue={setDelegate} />
+          <AddressInput value={delegate} onChangeValue={onChangeDelegate} />
           <p className="p-2">
-            Woof. Apples ducks straw, quail a ostriches donkey, hay hook cucumbers. veterinarian blue berries cattle jelly canning. Augers oats hen cowpies. Prairie dogs raccoons robins rats. Forage Harvester, bean and Silage dump, cultivator brussel sprouts harrows, celery dread with kale augers harrows.
+            Enter an address to delegate your allowance.
           </p>
         </div>
       </Accordian>
